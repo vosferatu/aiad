@@ -1,17 +1,17 @@
+package agents;
+
+import jade.core.AID;
 import jade.core.Agent;
 import jade.core.behaviours.Behaviour;
 
-public class HelloAgent extends Agent {
-  public static void main() {
-    System.out.println("WTF?");
-  }
-
+public class CompanyAgent extends Agent {
   public void setup() {
     System.out.println("Hello World!");
+    this.addBehaviour(new WorkingBehaviour());
   }
 
   public void takeDown() {
-    System.out.println(this.getLocalName() + ": started working!");
+    System.out.println(this.getLocalName() + ": Exited!");
   }
 
   class WorkingBehaviour extends Behaviour {
