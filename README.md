@@ -4,13 +4,23 @@
 
 You need maven to be able to compile the project.
 
-Afterwards simply run 'mvn compile'
+Afterwards simply run
+
+    mvn compile
 
 
 
 ## Running
+After having compiled the whole project.
 
-java -cp lib/jade.jar:classes jade.Boot -gui -agents "\<agent1_name>:\<agent1_class>;\<agent2_name>:\<agent2_class>"
+ - Simply running the GUI
+    
+     
+       java -cp lib/jade.jar:target/classes jade.Boot -gui
+        
+ - Running the GUI along with some agents
+
+        java -cp lib/jade.jar:target/classes jade.Boot -gui -agents "\<agent1_name>:\<agent1_class>;\<agent2_name>:\<agent2_class>"
 
 ## Components
 
