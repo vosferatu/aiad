@@ -1,4 +1,4 @@
-package behaviour;
+package market.behaviour;
 
 public class Order implements Comparable<Order>{
   private String company;

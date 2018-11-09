@@ -7,11 +7,19 @@
   <version>1.0-SNAPSHOT</version>
   <name>aiad</name>
   <url>http://maven.apache.org</url>
+  <properties>
+    <src.dir>src</src.dir>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+  </properties>
+  <build>
+    <sourceDirectory>${src.dir}</sourceDirectory>
+  </build>
   <dependencies>
     <dependency>
-        <groupId>com.tilab.jade</groupId> 
-        <artifactId>jade</artifactId> 
-        <version>4.5.0</version> 
+        <groupId>com.tilab.jade</groupId>
+        <artifactId>jade</artifactId>
+        <version>4.5.0</version>
         <scope>system</scope>
     	  <systemPath>${project.basedir}/lib/jade.jar</systemPath>
     </dependency>

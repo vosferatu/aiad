@@ -1,4 +1,4 @@
-package agents;
+package company;
 
 import jade.core.AID;
 import jade.core.Agent;

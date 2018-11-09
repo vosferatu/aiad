@@ -1,6 +1,7 @@
-package behaviour;
+package market.behaviour;
 
-import jade.core.Agent;
+import market.StockMarketAgent;
+
 import jade.lang.acl.ACLMessage;
 import jade.core.behaviours.Behaviour;
 import java.util.concurrent.ConcurrentHashMap;
@@ -8,18 +9,18 @@ import java.util.concurrent.PriorityBlockingQueue;
 
 
 public class WaitForOrder extends Behaviour {
-
+  private StockMarketAgent agent;
   private ConcurrentHashMap<String, PriorityBlockingQueue<Order>> stocks;
 
-  public WaitForOrder(ConcurrentHashMap<String, PriorityBlockingQueue<Order>> stocks) {
+  public WaitForOrder(StockMarketAgent agent, ConcurrentHashMap<String, PriorityBlockingQueue<Order>> stocks) {
+    this.agent = agent;
     this.stocks = stocks;
   }
 
   public void action() {
-    ACLMessage msg = this.getAgent().blockingReceive();
+    ACLMessage msg = this.agent.blockingReceive();
     if (msg != null) {
-      Agent agent = this.getAgent();
-      System.out.println(msg);
+      System.out.println("Got msg: '" + msg.getContent() + "'");
       // Do something with message
     }
   }

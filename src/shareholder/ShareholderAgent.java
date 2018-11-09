@@ -1,4 +1,4 @@
-package agents;
+package shareholder;
 
 import jade.core.AID;
 import jade.core.Agent;
@@ -7,8 +7,8 @@ import jade.core.behaviours.Behaviour;
 import jade.domain.FIPAAgentManagement.SearchConstraints;
 import jade.domain.FIPAAgentManagement.AMSAgentDescription;
 
-public class StockAgent extends Agent {
-  private static final String MARKET_NAME = "MARKET";
+public class ShareholderAgent extends Agent {
+  private static final String MARKET_NAME = "market";
 
   private AID market;
   private AID companies;
