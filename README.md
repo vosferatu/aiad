@@ -20,7 +20,7 @@ After having compiled the whole project.
         
  - Running the GUI along with some agents
 
-        java -cp lib/jade.jar:target/classes jade.Boot -gui -agents "\<agent1_name>:\<agent1_class>;\<agent2_name>:\<agent2_class>"
+        java -cp lib/jade.jar:target/classes jade.Boot -gui -agents "<agent1_name>:<agent1_class>;<agent2_name>:<agent2_class>"
 
 ## Components
 
