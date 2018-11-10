@@ -36,6 +36,53 @@ This is a single agent which will keep track of every buy and sell order placed 
 
 The agent that represents the stock market must be named 'MARKET'.
 
-### Stock Agent
+### Shareholders
 
 Represents the multiple people that might be buying and selling the stocks. They communicate with both the companies and the stock market and are the main focus of this project.
+
+### Messages 
+
+#### BOUGHT
+Used to warn a shareholder that a certain share he was buying was just bought.
+
+        BOUGHT;<company>;<price>;<amount>
+        
+#### BUY
+Shareholder warns the stock market that he wants to buy a share.
+
+        BUY;<company>;<price>;<amount>
+        
+#### BUY_ORDERS
+Shareholder requests all the buy orders from the stock market
+The reply will contain a ConcurrentHashMap<String, PriorityBlockingQueue<Order>> in the content and should be retrived using getContentObject().
+
+        BUY_ORDERS
+        
+#### COMPANIES
+Shareholder requests a list of the companies in the stock market.
+The reply will contain a ConcurrentHashMap<String, PriorityBlockingQueue<Order>> in the content and should be retrived using getContentObject().
+
+        COMPANIES
+        
+#### ORDERS
+Shareholder requests all of the orders (buy/sell) in the stock market
+The reply will contain a Map.Entry<ConcurrentHashMap<String, PriorityBlockingQueue<Order>>, ConcurrentHashMap<String, PriorityBlockingQueue<Order>>> (sell_orders, buy_orders) in the content and should be retrived using getContentObject().
+    
+        ORDERS
+        
+#### SELL
+Shareholder warns the stock market that he wants to sell a specific share
+
+        SELL;<company>;<price>;<amount>
+        
+#### SELL_ORDERS
+Shareholder requests all the sell orders from the stock market
+The reply will contain a ConcurrentHashMap<String, PriorityBlockingQueue<Order>> in the content and should be retrived using getContentObject().
+    
+        SELL_ORDERS
+        
+
+#### SOLD
+Used to warn a shareholder that a certain share he was selling was just bought.
+
+        SOLD;<company>;<price>;<amount>
