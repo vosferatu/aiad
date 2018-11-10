@@ -27,22 +27,28 @@ public class WaitForOrder extends Behaviour {
     if (msg != null) {
       StockMessage message = StockMessage.fromString(msg.getContent());
       System.out.println("Got msg: '" + message + "' from '" + msg.getSender().getLocalName() + "'");
+
       if (message.getType().equals(MessageBuilder.SELL)) {
-        this.sellOrder(message, msg.getSender());
+        // Check if a buy order meets requirements
+        this.addOrder(message, msg.getSender(), this.sell_orders);
         this.printSellOrders();
+      }
+      else if (message.getType().equals(MessageBuilder.BUY)) {
+        // Check if a sell order meets requirements 
+        this.addOrder(message, msg.getSender(), this.buy_orders);
       }
     }
   }
 
-  private void sellOrder(StockMessage msg, AID sender) {
+  private void addOrder(StockMessage msg, AID sender, ConcurrentHashMap<String, PriorityBlockingQueue<Order>> company_orders) {
     PriorityBlockingQueue<Order> orders;
 
-    if (!this.sell_orders.containsKey(msg.getCompany())) {
+    if (!company_orders.containsKey(msg.getCompany())) {
       orders = new PriorityBlockingQueue<Order>();
-      this.sell_orders.put(msg.getCompany(), orders);
+      company_orders.put(msg.getCompany(), orders);
     }
     else {
-      orders = this.sell_orders.get(msg.getCompany());
+      orders = company_orders.get(msg.getCompany());
     }
 
     orders.add(new Order(sender, msg.getCompany(), msg.getPrice(), msg.getAmount()));
