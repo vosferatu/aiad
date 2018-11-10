@@ -3,7 +3,8 @@ package messages;
 import java.util.Arrays;
 
 public class StockMessage {
-  private static final String[] MSG_TYPES = {"BOUGHT", "BUY", "SELL", "SOLD"};
+  //Ordered alphabetically, if need to change make sure it is sorted!!!
+  private static final String[] MSG_TYPES = {"BOUGHT", "BUY", "BUY_ORDERS", "COMPANIES", "ORDERS", "SELL", "SELL_ORDERS", "SOLD"};
   private String type;
   private String company;
   private double price;
@@ -36,6 +37,10 @@ public class StockMessage {
       else {
         System.err.println("Unknown message type received! '" + type + "'");
       }
+    }
+    else if (parts.length == 1) { //Requesting something
+      String type = parts[0];
+      return new StockMessage(type, null, 0, 0);
     }
     else {
       System.err.println("Faulty message received! '" + message + "'");

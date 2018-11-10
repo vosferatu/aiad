@@ -28,7 +28,7 @@ public class ShareholderAgent extends Agent {
 
   public void setup() {
     this.market = new AID(MARKET_NAME, false);
-    ACLMessage msg = new ACLMessage(0);
+    ACLMessage msg = new ACLMessage(ACLMessage.UNKNOWN);
     msg.addReceiver(this.market);
     msg.setSender(this.getAID());
 
