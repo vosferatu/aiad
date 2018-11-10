@@ -5,6 +5,10 @@ public final class MessageBuilder {
   public static final String SELL = "SELL";
   public static final String BOUGHT = "BOUGHT";
   public static final String SOLD = "SOLD";
+  public static final String SELL_ORDERS = "SELL_ORDERS";
+  public static final String BUY_ORDERS = "BUY_ORDERS";
+  public static final String ORDERS = "ORDERS";
+  public static final String COMPANIES = "COMPANIES";
 
   private MessageBuilder() {}
 

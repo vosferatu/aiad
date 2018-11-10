@@ -32,6 +32,8 @@ public class ShareholderAgent extends Agent {
     msg.addReceiver(this.market);
     msg.setSender(this.getAID());
 
+    this.addBehaviour(new WaitForResponses(this));
+
     this.initialSetup();
     for (Map.Entry<String, Holding> entry : this.shares.entrySet()) {
       Holding share = entry.getValue();

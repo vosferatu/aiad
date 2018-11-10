@@ -1,8 +1,10 @@
 package market.behaviour;
 
 import jade.core.AID;
+import java.io.Serializable;
 
-public abstract class Order implements Comparable<Order>{
+public abstract class Order implements Comparable<Order>, Serializable{
+  static final long serialVersionUID = 42L;
   protected AID owner;
   protected String company;
   protected double price;
@@ -16,19 +18,19 @@ public abstract class Order implements Comparable<Order>{
     this.amount = amount;
   }
 
-  AID getOwner() {
+  public AID getOwner() {
     return this.owner;
   }
 
-  String getCompany() {
+  public String getCompany() {
     return this.company;
   }
 
-  double getPrice() {
+  public double getPrice() {
     return this.price;
   }
 
-  int getAmount() {
+  public int getAmount() {
     return this.amount;
   }
 }
