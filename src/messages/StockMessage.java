@@ -1,16 +1,15 @@
 package messages;
 
+import java.util.Arrays;
+
 public class StockMessage {
-  private static final String BUY = "BUY";
-  private static final String SELL = "SELL";
-  private static final String BOUGHT = "BOUGHT";
-  private static final String SOLD = "SOLD";
+  private static final String[] MSG_TYPES = {"BOUGHT", "BUY", "SELL", "SOLD"};
   private String type;
   private String company;
-  private float price;
+  private double price;
   private int amount;
 
-  StockMessage(String type, String company, float price, int amount) {
+  StockMessage(String type, String company, double price, int amount) {
     this.type = type;
     this.company = company;
     this.price = price;
@@ -21,12 +20,12 @@ public class StockMessage {
     String[] parts = message.split(";");
     if (parts.length == 4) {
       String type = parts[0];
-      if (type == BUY || type == SELL || type == BOUGHT || type == SOLD) {
+      if (Arrays.binarySearch(MSG_TYPES, type) >= 0) {
         String company = parts[1];
-        float price;
+        double price;
         int amount;
         try {
-          price = Float.parseFloat(parts[2]);
+          price = Double.parseDouble(parts[2]);
           amount = Integer.parseInt(parts[3]);
           return new StockMessage(type, company, price, amount);
         }
@@ -52,7 +51,7 @@ public class StockMessage {
     return this.company;
   }
 
-  public float getPrice() {
+  public double getPrice() {
     return this.price;
   }
 
