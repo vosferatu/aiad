@@ -1,7 +1,8 @@
 package shareholder.behaviour;
 
-import market.StockMarketAgent;
+import messages.*;
 import market.behaviour.Order;
+import market.StockMarketAgent;
 
 import jade.core.Agent;
 import java.util.HashSet;
@@ -63,7 +64,8 @@ public class WaitForResponses extends Behaviour {
         }
       }
       else { //Simple text content
-
+        StockMessage msg = StockMessage.fromString(message.getContent());
+        System.out.println("Got '" + msg.toString() + "' from '" + message.getSender().getLocalName() + "'");
       }
     }
   }

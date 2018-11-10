@@ -33,4 +33,12 @@ public abstract class Order implements Comparable<Order>, Serializable{
   public int getAmount() {
     return this.amount;
   }
+
+  public void addAmount(int amount) {
+    this.amount+=amount;
+  }
+
+  public void subAmount(int amount) {
+    this.amount-=amount;
+  }
 }
