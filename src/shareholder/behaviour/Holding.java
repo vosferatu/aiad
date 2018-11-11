@@ -14,6 +14,7 @@ public class Holding {
     this.sell_prices = new LinkedList<Double>();
     this.buy_prices = new LinkedList<Double>();
     this.buy_prices.addFirst(Double.valueOf(buy_price));
+    this.sell_prices.addFirst(Double.valueOf(buy_price));
   }
 
   public double sell(double price, int amount) {
@@ -46,7 +47,7 @@ public class Holding {
 
   @Override
   public String toString() {
-    return "('" + this.company_name + "', " + this.amount + ")";
+    return "('" + this.company_name + "', " + this.amount + ", " + String.format("%.2f", this.getLastBuyPrice()) + ")";
   }
 
 }

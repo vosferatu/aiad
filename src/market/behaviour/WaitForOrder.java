@@ -8,6 +8,7 @@ import java.util.Map;
 import java.util.HashSet;
 import java.util.LinkedList;
 import jade.lang.acl.ACLMessage;
+import jade.lang.acl.MessageTemplate;
 import jade.core.behaviours.Behaviour;
 import java.util.AbstractMap.SimpleEntry;
 import java.util.concurrent.ConcurrentHashMap;
@@ -16,17 +17,20 @@ import java.util.concurrent.PriorityBlockingQueue;
 
 public class WaitForOrder extends Behaviour {
   private StockMarketAgent agent;
+  MessageTemplate expected_msgs;
   private ConcurrentHashMap<String, PriorityBlockingQueue<Order>> buy_orders;
   private ConcurrentHashMap<String, PriorityBlockingQueue<Order>> sell_orders;
+
 
   public WaitForOrder(StockMarketAgent agent, ConcurrentHashMap<String, PriorityBlockingQueue<Order>> buy_orders, ConcurrentHashMap<String, PriorityBlockingQueue<Order>> sell_orders) {
     this.agent = agent;
     this.buy_orders = buy_orders;
     this.sell_orders = sell_orders;
+    this.expected_msgs = MessageTemplate.MatchPerformative(ACLMessage.UNKNOWN);
   }
 
   public void action() {
-    ACLMessage message = this.agent.blockingReceive();
+    ACLMessage message = this.agent.blockingReceive(this.expected_msgs);
     if (message != null) {
       AID sender = message.getSender();
       StockMessage msg = StockMessage.fromString(message.getContent());
@@ -34,13 +38,17 @@ public class WaitForOrder extends Behaviour {
         return;
       }
       String msg_type = msg.getType();
-      System.out.println("MARKET /|\\ Got msg: '" + message.getContent() + "' from '" + sender.getLocalName() + "'");
+      // System.out.println("MARKET /|\\ Got msg: '" + message.getContent() + "' from '" + sender.getLocalName() + "'");
 
       if (msg_type.equals(MessageBuilder.SELL)) {
         this.handleSellRequest(sender, msg.getCompany(), msg.getPrice(), msg.getAmount());
+        this.printOrders("BUY", this.buy_orders);
+        this.printOrders("SELL", this.sell_orders);
       }
       else if (msg_type.equals(MessageBuilder.BUY)) {
         this.handleBuyRequest(sender, msg.getCompany(), msg.getPrice(), msg.getAmount());
+        this.printOrders("BUY", this.buy_orders);
+        this.printOrders("SELL", this.sell_orders);
       }
       else if (msg_type.equals(MessageBuilder.SELL_ORDERS)) {
         System.out.println(" Handling sell_orders");
@@ -51,16 +59,12 @@ public class WaitForOrder extends Behaviour {
         this.handleBuyOrdersRequest(sender);
       }
       else if (msg_type.equals(MessageBuilder.ORDERS)) {
-        System.out.println(" Handling orders");
         this.handleOrdersRequest(sender);
       }
       else if (msg_type.equals(MessageBuilder.COMPANIES)) {
         System.out.println(" Handling companies");
         this.handleCompaniesRequest(sender);
       }
-
-      this.printOrders("BUY", this.buy_orders);
-      this.printOrders("SELL", this.sell_orders);
     }
   }
 
@@ -264,8 +268,9 @@ public class WaitForOrder extends Behaviour {
     for (Map.Entry<String, PriorityBlockingQueue<Order>> entry : orders.entrySet()) {
       System.out.println(entry.getKey());
       for (Order order : entry.getValue()) {
-        System.out.println("  " + order.toString());
+        System.out.print("  " + order.toString());
       }
+      System.out.println("");
     }
   }
 }

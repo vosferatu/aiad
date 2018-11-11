@@ -7,23 +7,27 @@ import shareholder.ShareholderAgent;
 
 import java.util.HashSet;
 import jade.lang.acl.ACLMessage;
+import jade.lang.acl.MessageTemplate;
 import jade.core.behaviours.Behaviour;
 import java.util.AbstractMap.SimpleEntry;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.PriorityBlockingQueue;
 
 //Waits for a reply from the market, either confirming sell or buy
-public class WaitForResponses extends Behaviour {
+public class ListenOrderReplies extends Behaviour {
+  MessageTemplate expected_msgs;
   ShareholderAgent agent;
 
 
-  public WaitForResponses(ShareholderAgent agent) {
+  public ListenOrderReplies(ShareholderAgent agent) {
     super();
     this.agent = agent;
+
+    this.expected_msgs = MessageTemplate.MatchPerformative(ACLMessage.UNKNOWN);
   }
 
   public void action() {
-    ACLMessage message = this.agent.blockingReceive();
+    ACLMessage message = this.agent.blockingReceive(this.expected_msgs, 500);
     if (message != null) {
       int perf = message.getPerformative();
 

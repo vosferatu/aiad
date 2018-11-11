@@ -19,7 +19,6 @@ public class StockMarketAgent extends Agent {
     System.out.println("Initializing stock market");
 
     // Maybe initialize the orders with an external file?
-
     this.addBehaviour(new WaitForOrder(this, this.buy_orders, this.sell_orders));
   }
 

@@ -1,12 +1,16 @@
 package shareholder;
 
+import messages.*;
+import market.behaviour.Order;
 import shareholder.behaviour.*;
+
 
 import jade.core.AID;
 import java.util.Map;
 import jade.core.Agent;
 import java.util.Random;
 import java.util.Map.Entry;
+import java.util.LinkedList;
 import jade.domain.AMSService;
 import jade.lang.acl.ACLMessage;
 import jade.core.behaviours.Behaviour;
@@ -50,13 +54,35 @@ public class ShareholderAgent extends Agent {
     }
   }
 
+  public void buyShares(LinkedList<Order> orders) {
+    for (Order order : orders) {
+      StockMessage buy_msg = MessageBuilder.buyStockMsg(order.getCompany(), order.getPrice(), order.getAmount());
+      ACLMessage buy = new ACLMessage(ACLMessage.UNKNOWN);
+      buy.addReceiver(this.market);
+      buy.setContent(buy_msg.toString());
+      this.send(buy);
+    }
+  }
+
+  public void sellShares(LinkedList<Order> orders) {
+    for (Order order : orders) {
+      StockMessage sell_msg = MessageBuilder.sellStockMsg(order.getCompany(), order.getPrice(), order.getAmount());
+      ACLMessage sell = new ACLMessage(ACLMessage.UNKNOWN);
+      sell.addReceiver(this.market);
+      sell.setContent(sell_msg.toString());
+      this.send(sell);
+    }
+  }
+
   public void setup() {
     this.market = new AID(MARKET_NAME, false);
     ACLMessage msg = new ACLMessage(ACLMessage.UNKNOWN);
     msg.addReceiver(this.market);
     msg.setSender(this.getAID());
 
-    this.addBehaviour(new WaitForResponses(this));
+    this.addBehaviour(new ListenOrderReplies(this));
+    Random rand = new Random();
+    this.addBehaviour(new CheckMarketChanges(this, 1000+rand.nextInt(1000)));
 
     this.initialSetup();
     for (Map.Entry<String, Holding> entry : this.holdings.entrySet()) {
@@ -81,14 +107,31 @@ public class ShareholderAgent extends Agent {
   }
 
   public void takeDown() {
-    System.out.println(this.getLocalName() + ": Exited!");
+    String over = "GAME OVER FOR '" + this.getLocalName() + "' final money = " + String.format("%.2f", this.money) + "€\n";
+    for (Holding hold : this.holdings.values()) {
+      over += "  " + hold.toString() + "\n";
+    }
+    System.out.println(over);
+
   }
 
   public void printHoldings() {
     String print_str = "\n--- Agent '" + this.getLocalName() + "' holdings (" + String.format("%.2f", this.money) + "€) --- \n";
     for (Holding hold : this.holdings.values()) {
-      print_str += "  " + hold.toString() + "\n";
+      print_str += "  " + hold.toString() + ",";
     }
-    System.out.println(print_str + " --- Agent '" + this.getLocalName() + "' --- ");
+    System.out.println(print_str + "\n --- Agent '" + this.getLocalName() + "' --- ");
+  }
+
+  public double getMoney() {
+    return this.money;
+  }
+
+  public AID getMarket() {
+    return this.market;
+  }
+
+  public ConcurrentHashMap<String, Holding> getHoldings() {
+    return this.holdings;
   }
 }
