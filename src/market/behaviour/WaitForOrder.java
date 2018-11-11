@@ -264,13 +264,13 @@ public class WaitForOrder extends Behaviour {
   }
 
   private void printOrders(String start, ConcurrentHashMap<String, PriorityBlockingQueue<Order>> orders) {
-    System.out.println(" --- " + start + " ---  ");
+    String final_str = " --- " + start + " ---  \n";
     for (Map.Entry<String, PriorityBlockingQueue<Order>> entry : orders.entrySet()) {
-      System.out.println(entry.getKey());
+      final_str += entry.getKey() + "\n";
       for (Order order : entry.getValue()) {
-        System.out.print("  " + order.toString());
+        final_str += "  " + order.toString() + "\n";
       }
-      System.out.println("");
     }
+    System.out.println(final_str);
   }
 }
