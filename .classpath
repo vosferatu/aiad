@@ -24,4 +24,5 @@
 		</attributes>
 	</classpathentry>
 	<classpathentry kind="output" path="target/classes"/>
+	<classpathentry kind="lib" path="lib/SAJaS.jar"/>
 </classpath>
