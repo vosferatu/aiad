@@ -3,8 +3,8 @@ package shareholder.behaviour;
 import messages.*;
 import market.behaviour.Order;
 import market.StockMarketAgent;
+import shareholder.ShareholderAgent;
 
-import jade.core.Agent;
 import java.util.HashSet;
 import jade.lang.acl.ACLMessage;
 import jade.core.behaviours.Behaviour;
@@ -14,10 +14,10 @@ import java.util.concurrent.PriorityBlockingQueue;
 
 //Waits for a reply from the market, either confirming sell or buy
 public class WaitForResponses extends Behaviour {
-  Agent agent;
+  ShareholderAgent agent;
 
 
-  public WaitForResponses(Agent agent) {
+  public WaitForResponses(ShareholderAgent agent) {
     super();
     this.agent = agent;
   }
@@ -65,8 +65,17 @@ public class WaitForResponses extends Behaviour {
       }
       else { //Simple text content
         StockMessage msg = StockMessage.fromString(message.getContent());
-        System.out.println("Got '" + msg.toString() + "' from '" + message.getSender().getLocalName() + "'");
+        System.out.println(this.agent.getLocalName() + " /|\\ Got '" + msg.toString() + "' from '" + message.getSender().getLocalName() + "'");
+
+        if (msg.getType().equals(MessageBuilder.BOUGHT)) {
+          this.agent.boughtShare(msg.getCompany(), msg.getPrice(), msg.getAmount());
+        }
+        else if (msg.getType().equals(MessageBuilder.SOLD)) {
+          this.agent.soldShare(msg.getCompany(), msg.getPrice(), msg.getAmount());
+        }
       }
+
+      this.agent.printHoldings();
     }
   }
 

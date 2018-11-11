@@ -30,8 +30,11 @@ public class WaitForOrder extends Behaviour {
     if (message != null) {
       AID sender = message.getSender();
       StockMessage msg = StockMessage.fromString(message.getContent());
+      if (msg == null) {
+        return;
+      }
       String msg_type = msg.getType();
-      System.out.println("Got msg: '" + message.getContent() + "' from '" + sender.getLocalName() + "'");
+      System.out.println("MARKET /|\\ Got msg: '" + message.getContent() + "' from '" + sender.getLocalName() + "'");
 
       if (msg_type.equals(MessageBuilder.SELL)) {
         this.handleSellRequest(sender, msg.getCompany(), msg.getPrice(), msg.getAmount());
@@ -123,7 +126,7 @@ public class WaitForOrder extends Behaviour {
       for (Order order : compatibles) {
         AID owner = order.getOwner();
         total_sold += order.getAmount();
-        this.warnBothParties(sender, owner, company, order.getPrice(), order.getAmount());
+        this.warnBothParties(owner, sender, company, order.getPrice(), order.getAmount());
       }
       if (total_sold < amount) { //need to put a sell order with remaining amount
         SellOrder new_order = new SellOrder(sender, company, price, amount - total_sold);
@@ -175,7 +178,7 @@ public class WaitForOrder extends Behaviour {
       for (Order order : compatibles) {
         AID owner = order.getOwner();
         total_bought+=order.getAmount();
-        this.warnBothParties(owner, sender, company, order.getPrice(), order.getAmount());
+        this.warnBothParties(sender, owner, company, order.getPrice(), order.getAmount());
       }
       if (total_bought < amount) { //need to put a buy order with remaining amount
         BuyOrder new_order = new BuyOrder(sender, company, price, amount - total_bought);

@@ -24,7 +24,31 @@ public class ShareholderAgent extends Agent {
   private double money;
 
   // Company_Name -> Share
-  private ConcurrentHashMap<String, Holding> shares = new ConcurrentHashMap<String, Holding>();
+  private ConcurrentHashMap<String, Holding> holdings = new ConcurrentHashMap<String, Holding>();
+
+  public void boughtShare(String company, double price, int amount) {
+    if (!this.holdings.containsKey(company)) {
+      Holding hold = new Holding(company, price, amount);
+      this.holdings.put(company, hold);
+    }
+    else {
+      Holding hold = this.holdings.get(company);
+      this.money -= hold.buy(price, amount);
+    }
+  }
+
+  public void soldShare(String company, double price, int amount) {
+    if (this.holdings.containsKey(company)) {
+      Holding hold = this.holdings.get(company);
+      this.money += hold.sell(price, amount);
+      if (hold.getAmount() <= 0) {
+        this.holdings.remove(company);
+      }
+    }
+    else {
+      System.err.println("WTF?");
+    }
+  }
 
   public void setup() {
     this.market = new AID(MARKET_NAME, false);
@@ -35,7 +59,7 @@ public class ShareholderAgent extends Agent {
     this.addBehaviour(new WaitForResponses(this));
 
     this.initialSetup();
-    for (Map.Entry<String, Holding> entry : this.shares.entrySet()) {
+    for (Map.Entry<String, Holding> entry : this.holdings.entrySet()) {
       Holding share = entry.getValue();
       String price = String.format("%.2f", share.getLastBuyPrice()*1.05);
       msg.setContent("SELL;" + entry.getKey() + ";" + price +";"+(int)(share.getAmount()*0.5));
@@ -52,11 +76,19 @@ public class ShareholderAgent extends Agent {
       String company = this.companies[rand.nextInt(5)];
       int shares_number = 10 + rand.nextInt(11);
       double initial_price = 5.0 + rand.nextFloat()*15.0;
-      this.shares.put(company, new Holding(company, shares_number, initial_price));
+      this.holdings.put(company, new Holding(company, initial_price, shares_number));
     }
   }
 
   public void takeDown() {
     System.out.println(this.getLocalName() + ": Exited!");
+  }
+
+  public void printHoldings() {
+    String print_str = "\n--- Agent '" + this.getLocalName() + "' holdings (" + String.format("%.2f", this.money) + "€) --- \n";
+    for (Holding hold : this.holdings.values()) {
+      print_str += "  " + hold.toString() + "\n";
+    }
+    System.out.println(print_str + " --- Agent '" + this.getLocalName() + "' --- ");
   }
 }

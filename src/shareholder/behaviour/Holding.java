@@ -8,7 +8,7 @@ public class Holding {
   public LinkedList<Double> buy_prices; //First element is latest buy price
   public LinkedList<Double> sell_prices; //First element is latest sell price
 
-  public Holding(String name, int amount, double buy_price) {
+  public Holding(String name, double buy_price,  int amount) {
     this.company_name = name;
     this.amount = amount;
     this.sell_prices = new LinkedList<Double>();
@@ -16,13 +16,13 @@ public class Holding {
     this.buy_prices.addFirst(Double.valueOf(buy_price));
   }
 
-  public double sell(int amount, double price) {
+  public double sell(double price, int amount) {
     this.amount-=amount;
     this.sell_prices.addFirst(Double.valueOf(price));
     return amount*price;
   }
 
-  public double buy(int amount, double price) {
+  public double buy(double price, int amount) {
     this.amount+=amount;
     this.buy_prices.addFirst(Double.valueOf(price));
     return amount*price;
@@ -42,6 +42,11 @@ public class Holding {
 
   public String getCompany() {
     return this.company_name;
+  }
+
+  @Override
+  public String toString() {
+    return "('" + this.company_name + "', " + this.amount + ")";
   }
 
 }
