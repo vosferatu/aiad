@@ -3,8 +3,8 @@
 ALOOF_N=0
 BOLD_N=1
 FRIGHTFUL_N=2
-START="java -cp lib/jade.jar:target/classes jade.Boot -agents \""
-AGENTS="market:market.StockMarketAgent("
+START="java -cp lib/jade.jar:target/classes jade.Boot -agents \"market:market.StockMarketAgent("
+AGENTS=""
 SHAREHOLDER_CLASS=":shareholder.ShareholderAgent"
 
 if [ $# -eq 3 ]; then
@@ -25,9 +25,9 @@ if [ $# -eq 3 ]; then
   done
 
   for ((number=0; number<$TOTAL_AGENTS; number++)) do
-    AGENTS="${AGENTS}${TOTAL_AGENTS});holder${number}${SHAREHOLDER_CLASS}(${TOTAL_AGENTS},${strat_arr[${number}]});"
+    AGENTS="${AGENTS}holder${number}${SHAREHOLDER_CLASS}(${TOTAL_AGENTS},${strat_arr[${number}]});"
   done
-  eval "$START$AGENTS\""
+  eval "$START${TOTAL_AGENTS});$AGENTS\""
 else
   echo 'Usage:'
   echo '  sh run_simulation.sh <aloof_number> <bold_number> <frightful_number>'

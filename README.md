@@ -22,6 +22,26 @@ After having compiled the whole project.
 
         java -cp lib/jade.jar:target/classes jade.Boot -gui -agents "<agent1_name>:<agent1_class>;<agent2_name>:<agent2_class>"
 
+### Generating data
+After having compiled the project run and created a folder named 'data':
+
+  - Generating some data
+
+        sh gen_data.sh
+
+  - Notice how various company names are in the folder named 'data'. To merge them together just run
+
+        python3 merger.py
+
+  - This will create a merged file with all entries named 'final_data.csv'
+
+The data generated contains a variable number of columns because not every agents holds a stock of every company. The generated data follows the following standard:
+
+
+        <agent1Type>;<agent1Amount>;<agent1Price>;<agent2Type>;<agent2Amount>;<agent2Price>[ etc ...];<FinalStockPrice>
+
+So the first sets of 3 columns represent a single agent, and the last column is always the final stock price.
+
 ## Components
 
 The project is composed of mainly 3 sets of agents.

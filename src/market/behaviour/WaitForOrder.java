@@ -8,6 +8,7 @@ import java.util.Map;
 import java.util.HashSet;
 import java.util.LinkedList;
 import jade.lang.acl.ACLMessage;
+import java.util.concurrent.TimeUnit;
 import jade.lang.acl.MessageTemplate;
 import jade.core.behaviours.Behaviour;
 import java.util.AbstractMap.SimpleEntry;
@@ -40,7 +41,8 @@ public class WaitForOrder extends Behaviour {
         return;
       }
       String msg_type = msg.getType();
-      System.out.println("MARKET /|\\ Got msg: '" + message.getContent() + "' from '" + sender.getLocalName() + "'");
+      // System.out.println("MARKET /|\\ Got msg: '" + message.getContent() + "' from '" + sender.getLocalName() + "'");
+      System.out.print(".");
 
       if (msg_type.equals(MessageBuilder.SELL)) {
         this.handleSellRequest(sender, msg.getCompany(), msg.getPrice(), msg.getAmount());
@@ -68,9 +70,10 @@ public class WaitForOrder extends Behaviour {
       }
       else if (msg_type.equals("EXIT")) {
         this.agents_exited++;
+        System.out.print(this.agents_exited);
       }
     }
-    System.out.println(" Exited ---------> " + this.agents_exited);
+    // System.out.println(" Exited ---------> " + this.agents_exited);
     if (this.agents_exited >= this.agent.getAgentsN()) {
       this.agent.takeDown();
     }
@@ -130,7 +133,7 @@ public class WaitForOrder extends Behaviour {
     }
   }
 
-  private void handleSellRequest(AID sender, String company, double price, int amount) {
+  private synchronized void handleSellRequest(AID sender, String company, double price, int amount) {
     LinkedList<Order> compatibles = this.compatibleBuyOrder(company, price, amount);
 
     if (compatibles == null || compatibles.size() == 0) { // Add order to queue
@@ -139,14 +142,21 @@ public class WaitForOrder extends Behaviour {
     }
     else { // Remove order from queue and warn buyer and seller
       int total_sold = 0;
-      for (Order order : compatibles) {
-        AID owner = order.getOwner();
-        total_sold += order.getAmount();
-        this.warnBothParties(owner, sender, company, order.getPrice(), order.getAmount());
-      }
-      if (total_sold < amount) { //need to put a sell order with remaining amount
-        SellOrder new_order = new SellOrder(sender, company, price, amount - total_sold);
-        this.getOrdersOf(company, this.sell_orders).add(new_order);
+      synchronized (compatibles) {
+        for (Order order : compatibles) {
+          if (order == null) {
+            continue;
+          }
+          synchronized (order) {
+            AID owner = order.getOwner();
+            total_sold += order.getAmount();
+            this.warnBothParties(owner, sender, company, order.getPrice(), order.getAmount());
+          }
+        }
+        if (total_sold < amount) { //need to put a sell order with remaining amount
+          SellOrder new_order = new SellOrder(sender, company, price, amount - total_sold);
+          this.getOrdersOf(company, this.sell_orders).add(new_order);
+        }
       }
     }
   }
@@ -154,26 +164,31 @@ public class WaitForOrder extends Behaviour {
   // Checks the buy orders to see if the highest is higher than proposed price
   // If an order is compatible it is returned
   private synchronized LinkedList<Order> compatibleBuyOrder(String company, double price, int amount) {
-    PriorityBlockingQueue<Order> orders      = this.buy_orders.get(company);
-    LinkedList<Order>            compatibles = new LinkedList<Order>();
-    Order highest;
+    PriorityBlockingQueue<Order> orders = this.buy_orders.get(company);
+
+    LinkedList<Order> compatibles = new LinkedList<Order>();
+    Order             highest;
 
     if (orders != null && (highest = orders.peek()) != null) {
       while (highest.getPrice() >= price && amount > 0) {
         int order_amount = highest.getAmount();
-        if (order_amount > amount) { //Final
+        if (order_amount > amount) {   //Final
           highest.subAmount(amount);
           compatibles.addLast(new BuyOrder(highest.getOwner(), highest.getCompany(), highest.getPrice(), amount));
           amount -= order_amount;
         }
         else if (order_amount <= amount) {
           try {
-            compatibles.addLast(orders.take());
-            amount -= order_amount;
+            Order comp_order = orders.poll(500, TimeUnit.MILLISECONDS);
+            if (comp_order != null) {
+              compatibles.addLast(comp_order);
+              amount -= order_amount;
+            }
+            else {
+              break;
+            }
           }
-          catch (Exception e) {
-            System.err.println("Order does not exist anymore");
-          }
+          catch (Exception e) {}
         }
       }
       if (orders.peek() == null) {
@@ -184,7 +199,7 @@ public class WaitForOrder extends Behaviour {
     return null;
   }
 
-  private void handleBuyRequest(AID sender, String company, double price, int amount) {
+  private synchronized void handleBuyRequest(AID sender, String company, double price, int amount) {
     LinkedList<Order> compatibles = this.compatibleSellOrder(company, price, amount);
 
     if (compatibles == null || compatibles.size() == 0) {
@@ -193,39 +208,51 @@ public class WaitForOrder extends Behaviour {
     }
     else { //Remove order from queue and warn buyer and seller
       int total_bought = 0;
-      for (Order order : compatibles) {
-        AID owner = order.getOwner();
-        total_bought += order.getAmount();
-        this.warnBothParties(sender, owner, company, order.getPrice(), order.getAmount());
-      }
-      if (total_bought < amount) { //need to put a buy order with remaining amount
-        BuyOrder new_order = new BuyOrder(sender, company, price, amount - total_bought);
-        this.getOrdersOf(company, this.buy_orders).add(new_order);
+      synchronized (compatibles) {
+        for (Order order : compatibles) {
+          if (order == null) {
+            continue;
+          }
+          synchronized (order) {
+            AID owner = order.getOwner();
+            total_bought += order.getAmount();
+            this.warnBothParties(sender, owner, company, order.getPrice(), order.getAmount());
+          }
+        }
+        if (total_bought < amount) { //need to put a buy order with remaining amount
+          BuyOrder new_order = new BuyOrder(sender, company, price, amount - total_bought);
+          this.getOrdersOf(company, this.buy_orders).add(new_order);
+        }
       }
     }
   }
 
-  private synchronized LinkedList<Order> compatibleSellOrder(String company, double price, int amount) {
-    PriorityBlockingQueue<Order> orders      = this.sell_orders.get(company);
-    LinkedList<Order>            compatibles = new LinkedList<Order>();
-    Order lowest;
+  private LinkedList<Order> compatibleSellOrder(String company, double price, int amount) {
+    PriorityBlockingQueue<Order> orders = this.sell_orders.get(company);
+
+    LinkedList<Order> compatibles = new LinkedList<Order>();
+    Order             lowest;
 
     if (orders != null && (lowest = orders.peek()) != null) {
       while (lowest.getPrice() <= price && amount > 0) {
         int order_amount = lowest.getAmount();
-        if (order_amount > amount) { //Final
+        if (order_amount > amount) {   //Final
           lowest.subAmount(amount);
           compatibles.addLast(new BuyOrder(lowest.getOwner(), lowest.getCompany(), lowest.getPrice(), amount));
           amount -= order_amount;
         }
         else if (order_amount <= amount) {
           try {
-            compatibles.addLast(orders.take());
-            amount -= order_amount;
+            Order comp_order = orders.poll(500, TimeUnit.MILLISECONDS);
+            if (comp_order != null) {
+              compatibles.addLast(comp_order);
+              amount -= order_amount;
+            }
+            else {
+              break;
+            }
           }
-          catch (Exception e) {
-            System.err.println("Order does not exist anymore");
-          }
+          catch (Exception e) {}
         }
       }
       if (orders.peek() == null) {

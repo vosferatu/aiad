@@ -4,7 +4,7 @@ import messages.*;
 import market.behaviour.*;
 import shareholder.strategy.*;
 import shareholder.behaviour.*;
-
+import company.CompanyInformationPrinter;
 
 import jade.core.AID;
 import java.util.Map;
@@ -12,6 +12,7 @@ import jade.core.Agent;
 import java.util.Random;
 import java.util.Map.Entry;
 import java.util.LinkedList;
+import java.util.Enumeration;
 import jade.domain.AMSService;
 import jade.lang.acl.ACLMessage;
 import jade.core.behaviours.Behaviour;
@@ -41,11 +42,22 @@ public class ShareholderAgent extends Agent {
     this.market       = new AID(MARKET_NAME, false);
 
     HolderStrategy strat = this.chooseStrategy(agents_n, strategy_t);
-    this.printHoldings();
+    this.sendToPrinter(strategy_t);
 
     strat.initalStrategy();
     this.addBehaviour(new ListenOrderReplies(this, strat));
-    this.addBehaviour(new CheckMarketChanges(this, 2000 + rand.nextInt(200), strat));
+    this.addBehaviour(new CheckMarketChanges(this, 1000 + rand.nextInt(200), strat));
+  }
+
+  private void sendToPrinter(int strategy) {
+    for (Enumeration<Holding> e = this.holdings.elements(); e.hasMoreElements();) {
+      Holding hold    = e.nextElement();
+      String  company = hold.getCompany();
+      double  price   = hold.getLastBuyPrice();
+      int     amount  = hold.getRealAmount();
+      CompanyInformationPrinter.addCompany(company);
+      CompanyInformationPrinter.writeToCompany(company, strategy, amount, price);
+    }
   }
 
   HolderStrategy chooseStrategy(int agents_n, int strategy_t) {
@@ -86,9 +98,6 @@ public class ShareholderAgent extends Agent {
       if (hold.getRealAmount() <= 0) {
         this.holdings.remove(company);
       }
-    }
-    else {
-      System.err.println("WTF?");
     }
   }
 
@@ -135,7 +144,7 @@ public class ShareholderAgent extends Agent {
     for (Holding hold : this.holdings.values()) {
       over += "  " + hold.toString() + "\n";
     }
-    System.out.println(over);
+    // System.out.println(over);
   }
 
   public void printHoldings() {

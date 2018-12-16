@@ -1,7 +1,9 @@
 package market;
 
 import market.behaviour.*;
+import company.CompanyInformationPrinter;
 
+import java.util.Map;
 import jade.core.Agent;
 import jade.content.lang.Codec;
 import jade.lang.acl.ACLMessage;
@@ -43,6 +45,7 @@ public class StockMarketAgent extends Agent {
       msg.setLanguage(codec.getName());
       msg.setOntology(jmo.getName());
       this.getContentManager().fillContent(msg, new Action(getAID(), new ShutdownPlatform()));
+      this.printToFile();
       this.send(msg);
     }
     catch (Exception e) {}
@@ -50,5 +53,12 @@ public class StockMarketAgent extends Agent {
 
   public int getAgentsN() {
     return this.agents_n;
+  }
+
+  private void printToFile() {
+    for (Map.Entry<String, PriorityBlockingQueue<Order> > entry : this.sell_orders.entrySet()) {
+      Order order = entry.getValue().peek();
+      CompanyInformationPrinter.writeFinalCompanyPrice(order.getCompany(), order.getPrice());
+    }
   }
 }

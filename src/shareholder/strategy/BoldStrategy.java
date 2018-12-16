@@ -35,41 +35,55 @@ public class BoldStrategy extends HolderStrategy {
 
   @Override
   Order handleSellOrder(PriorityBlockingQueue<Order> orders, Holding hold) {
-    Order  order        = orders.peek();
-    int    order_amount = order.getAmount();
-    double price_diff   = this.priceDiff(hold.getLastBuyPrice(), order.getPrice());
-    double diff         = this.genPerc(0.15, 0.3);
+    synchronized (orders) {
+      Order order = orders.peek();
+      if (order == null) {
+        return null;
+      }
+      synchronized (order) {
+        int    order_amount = order.getAmount();
+        double price_diff   = this.priceDiff(hold.getLastBuyPrice(), order.getPrice());
+        double diff         = this.genPerc(0.15, 0.3);
 
-    if (price_diff > 0) {
-      int amount = (int)Math.ceil(order_amount * this.genPerc(0.5, 0.75)); // Small difference
-      if (price_diff >= diff) {
-        amount = order_amount;
+        if (price_diff > 0) {
+          int amount = (int)Math.ceil(order_amount * this.genPerc(0.5, 0.75)); // Small difference
+          if (price_diff >= diff) {
+            amount = order_amount;
+          }
+          return new BuyOrder(this.agent.getAID(), hold.getCompany(), order.getPrice(), amount);
+        }
+        else {
+          int amount = (int)Math.ceil(order_amount * this.genPerc(0.5, 0.75));
+          if (price_diff <= -diff) {
+            amount = order_amount;
+          }
+          return new SellOrder(this.agent.getAID(), hold.getCompany(), order.getPrice(), amount);
+        }
       }
-      return new BuyOrder(this.agent.getAID(), hold.getCompany(), order.getPrice(), amount);
-    }
-    else {
-      int amount = (int)Math.ceil(order_amount * this.genPerc(0.5, 0.75));
-      if (price_diff <= -diff) {
-        amount = order_amount;
-      }
-      return new SellOrder(this.agent.getAID(), hold.getCompany(), order.getPrice(), amount);
     }
   }
 
   @Override
   Order handleBuyOrder(PriorityBlockingQueue<Order> orders, Holding hold) {
-    Order  order        = orders.peek();
-    int    order_amount = order.getAmount();
-    double price_diff   = this.priceDiff(hold.getLastSellPrice(), order.getPrice());
-    double diff         = this.genPerc(0.15, 0.3);
-
-    if (price_diff < 0) {
-      int amount = (int)Math.ceil(order_amount * this.genPerc(0.5, 0.75));;
-      if (price_diff <= diff) {
-        amount = order_amount;
+    synchronized (orders) {
+      Order order = orders.peek();
+      if (order == null) {
+        return null;
       }
-      return new SellOrder(this.agent.getAID(), hold.getCompany(), order.getPrice(), amount);
+      synchronized (order) {
+        int    order_amount = order.getAmount();
+        double price_diff   = this.priceDiff(hold.getLastSellPrice(), order.getPrice());
+        double diff         = this.genPerc(0.15, 0.3);
+
+        if (price_diff < 0) {
+          int amount = (int)Math.ceil(order_amount * this.genPerc(0.5, 0.75));;
+          if (price_diff <= diff) {
+            amount = order_amount;
+          }
+          return new SellOrder(this.agent.getAID(), hold.getCompany(), order.getPrice(), amount);
+        }
+        return null;
+      }
     }
-    return null;
   }
 }
