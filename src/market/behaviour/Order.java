@@ -3,7 +3,7 @@ package market.behaviour;
 import jade.core.AID;
 import java.io.Serializable;
 
-public abstract class Order implements Comparable<Order>, Serializable{
+public abstract class Order implements Serializable, Comparable<Order> {
   static final long serialVersionUID = 42L;
   protected AID owner;
   protected String company;
@@ -12,10 +12,10 @@ public abstract class Order implements Comparable<Order>, Serializable{
 
 
   Order(AID owner, String company, double price, int amount) {
-    this.owner = owner;
+    this.owner   = owner;
     this.company = company;
-    this.price = price;
-    this.amount = amount;
+    this.price   = price;
+    this.amount  = amount;
   }
 
   public AID getOwner() {
@@ -35,10 +35,25 @@ public abstract class Order implements Comparable<Order>, Serializable{
   }
 
   public void addAmount(int amount) {
-    this.amount+=amount;
+    this.amount += amount;
   }
 
   public void subAmount(int amount) {
-    this.amount-=amount;
+    this.amount -= amount;
   }
+
+  public double getTotal() {
+    return this.price * this.amount;
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (obj instanceof Order) {
+      Order order = (Order)obj;
+      return order.company.equals(this.company) && Double.valueOf(order.price).equals(this.price);
+    }
+    return false;
+  }
+
+  abstract public String toMsg();
 }

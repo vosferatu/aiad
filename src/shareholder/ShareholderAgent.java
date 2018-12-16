@@ -1,7 +1,8 @@
 package shareholder;
 
 import messages.*;
-import market.behaviour.Order;
+import market.behaviour.*;
+import shareholder.strategy.*;
 import shareholder.behaviour.*;
 
 
@@ -22,13 +23,47 @@ import jade.domain.FIPAAgentManagement.AMSAgentDescription;
 public class ShareholderAgent extends Agent {
   private static final String MARKET_NAME = "market";
   private AID market;
-
-  private final String[] companies = {"intel", "amd", "nvidia", "asus", "samsung"};
-
   private double money;
-
+  private double usable_money;
   // Company_Name -> Share
   private ConcurrentHashMap<String, Holding> holdings = new ConcurrentHashMap<String, Holding>();
+
+  private static final int ALOOF     = 0;
+  private static final int BOLD      = 1;
+  private static final int FRIGHTFUL = 2;
+
+
+  public void setup() {
+    Object[] args = this.getArguments();
+    int      strategy_t = Integer.parseInt((String)args[1]), agents_n = Integer.parseInt((String)args[0]);
+    Random   rand = new Random();
+    this.usable_money = (this.money = (10 + rand.nextInt(20)) * agents_n);
+    this.market       = new AID(MARKET_NAME, false);
+
+    HolderStrategy strat = this.chooseStrategy(agents_n, strategy_t);
+    this.printHoldings();
+
+    strat.initalStrategy();
+    this.addBehaviour(new ListenOrderReplies(this, strat));
+    this.addBehaviour(new CheckMarketChanges(this, 2000 + rand.nextInt(200), strat));
+  }
+
+  HolderStrategy chooseStrategy(int agents_n, int strategy_t) {
+    if (strategy_t == ALOOF) {
+      return new AloofStrategy(this, agents_n);
+    }
+    else if (strategy_t == BOLD) {
+      return new BoldStrategy(this, agents_n);
+    }
+    else if (strategy_t == FRIGHTFUL) {
+      return new FrightfulStrategy(this, agents_n);
+    }
+    else {
+      System.err.println("UNKOWN strategy selected!! (" + strategy_t + ")");
+      System.exit(1);
+      return null;
+    }
+  }
 
   public void boughtShare(String company, double price, int amount) {
     if (!this.holdings.containsKey(company)) {
@@ -36,16 +71,19 @@ public class ShareholderAgent extends Agent {
       this.holdings.put(company, hold);
     }
     else {
-      Holding hold = this.holdings.get(company);
-      this.money -= hold.buy(price, amount);
+      Holding hold        = this.holdings.get(company);
+      double  money_spent = hold.buy(price, amount);
+      this.money -= money_spent;
     }
   }
 
   public void soldShare(String company, double price, int amount) {
     if (this.holdings.containsKey(company)) {
-      Holding hold = this.holdings.get(company);
-      this.money += hold.sell(price, amount);
-      if (hold.getAmount() <= 0) {
+      Holding hold      = this.holdings.get(company);
+      double  new_money = hold.sell(price, amount);
+      this.money        += new_money;
+      this.usable_money += new_money;
+      if (hold.getRealAmount() <= 0) {
         this.holdings.remove(company);
       }
     }
@@ -54,84 +92,89 @@ public class ShareholderAgent extends Agent {
     }
   }
 
-  public void buyShares(LinkedList<Order> orders) {
-    for (Order order : orders) {
-      StockMessage buy_msg = MessageBuilder.buyStockMsg(order.getCompany(), order.getPrice(), order.getAmount());
-      ACLMessage buy = new ACLMessage(ACLMessage.UNKNOWN);
-      buy.addReceiver(this.market);
-      buy.setContent(buy_msg.toString());
-      this.send(buy);
-    }
-  }
-
-  public void sellShares(LinkedList<Order> orders) {
-    for (Order order : orders) {
-      StockMessage sell_msg = MessageBuilder.sellStockMsg(order.getCompany(), order.getPrice(), order.getAmount());
-      ACLMessage sell = new ACLMessage(ACLMessage.UNKNOWN);
-      sell.addReceiver(this.market);
-      sell.setContent(sell_msg.toString());
-      this.send(sell);
-    }
-  }
-
-  public void setup() {
-    this.market = new AID(MARKET_NAME, false);
+  public void handleOrders(LinkedList<Order> orders) {
     ACLMessage msg = new ACLMessage(ACLMessage.UNKNOWN);
+
     msg.addReceiver(this.market);
-    msg.setSender(this.getAID());
+    for (Order order : orders) {
+      if (this.canBeExecuted(order)) {
+        msg.setContent(order.toMsg());
+        double total_price = order.getTotal();
 
-    this.addBehaviour(new ListenOrderReplies(this));
-    Random rand = new Random();
-    this.addBehaviour(new CheckMarketChanges(this, 1000+rand.nextInt(1000)));
-
-    this.initialSetup();
-    for (Map.Entry<String, Holding> entry : this.holdings.entrySet()) {
-      Holding share = entry.getValue();
-      String price = String.format("%.2f", share.getLastBuyPrice()*1.05);
-      msg.setContent("SELL;" + entry.getKey() + ";" + price +";"+(int)(share.getAmount()*0.5));
-      this.send(msg);
+        if (order instanceof BuyOrder && this.usable_money >= total_price) {
+          this.usable_money -= total_price;
+        }
+        this.send(msg);
+      }
     }
   }
 
-  private void initialSetup() {
-    Random rand = new Random();
-    this.money = 150 + (rand.nextFloat() * 150); // Generates random number between [150, 300]
-
-    int num_holdings = 3 + rand.nextInt(3);
-    for (int i = 0; i < num_holdings; i++) {
-      String company = this.companies[rand.nextInt(5)];
-      int shares_number = 10 + rand.nextInt(11);
-      double initial_price = 5.0 + rand.nextFloat()*15.0;
-      this.holdings.put(company, new Holding(company, initial_price, shares_number));
+  boolean canBeExecuted(Order order) {
+    if (order instanceof BuyOrder) {
+      double total_price = order.getTotal();
+      if (this.usable_money >= total_price) {
+        this.usable_money -= total_price;
+        return true;
+      }
+      return false;
+    }
+    else {
+      Holding hold   = this.getHolding(order.getCompany());
+      int     amount = order.getAmount();
+      if (amount <= hold.getAvailable() && amount > 0) {
+        hold.subAvailable(amount);
+        return true;
+      }
+      return false;
     }
   }
 
   public void takeDown() {
     String over = "GAME OVER FOR '" + this.getLocalName() + "' final money = " + String.format("%.2f", this.money) + "€\n";
+
     for (Holding hold : this.holdings.values()) {
       over += "  " + hold.toString() + "\n";
     }
     System.out.println(over);
-
   }
 
   public void printHoldings() {
     String print_str = "\n--- Agent '" + this.getLocalName() + "' holdings (" + String.format("%.2f", this.money) + "€) --- \n";
+
     for (Holding hold : this.holdings.values()) {
       print_str += "  " + hold.toString() + ",";
     }
-    System.out.println(print_str + "\n --- Agent '" + this.getLocalName() + "' --- ");
+    System.out.println(print_str + "\n --- Agent '" + this.getLocalName() + "' --- \n");
   }
 
   public double getMoney() {
     return this.money;
   }
 
+  public void setMoney(double money) {
+    this.money = money;
+  }
+
   public AID getMarket() {
     return this.market;
   }
 
+  public void addHolding(String name, Holding new_hold) {
+    Holding hold;
+
+    if ((hold = this.holdings.get(name)) == null) {
+      this.holdings.put(name, new_hold);
+    }
+    else {
+      hold.addAmount(new_hold.getRealAmount());
+    }
+  }
+
   public ConcurrentHashMap<String, Holding> getHoldings() {
     return this.holdings;
+  }
+
+  public Holding getHolding(String company) {
+    return this.holdings.get(company);
   }
 }

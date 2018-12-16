@@ -4,6 +4,7 @@ import messages.*;
 import market.behaviour.Order;
 import market.StockMarketAgent;
 import shareholder.ShareholderAgent;
+import shareholder.strategy.HolderStrategy;
 
 import java.util.HashSet;
 import jade.lang.acl.ACLMessage;
@@ -17,23 +18,26 @@ import java.util.concurrent.PriorityBlockingQueue;
 public class ListenOrderReplies extends Behaviour {
   MessageTemplate expected_msgs;
   ShareholderAgent agent;
+  HolderStrategy strategy;
 
 
-  public ListenOrderReplies(ShareholderAgent agent) {
+  public ListenOrderReplies(ShareholderAgent agent, HolderStrategy strategy) {
     super();
-    this.agent = agent;
+    this.agent    = agent;
+    this.strategy = strategy;
 
     this.expected_msgs = MessageTemplate.MatchPerformative(ACLMessage.UNKNOWN);
   }
 
   public void action() {
     ACLMessage message = this.agent.blockingReceive(this.expected_msgs, 500);
+
     if (message != null) {
       int perf = message.getPerformative();
 
       if (perf == ACLMessage.INFORM) { //HashMap of sell orders
         try {
-          ConcurrentHashMap<String, PriorityBlockingQueue<Order>> sell_orders = (ConcurrentHashMap<String, PriorityBlockingQueue<Order>>)message.getContentObject();
+          ConcurrentHashMap<String, PriorityBlockingQueue<Order> > sell_orders = (ConcurrentHashMap<String, PriorityBlockingQueue<Order> >)message.getContentObject();
           System.out.println("Agent '" + this.agent.getLocalName() + "' sell_orders = " + sell_orders);
         }
         catch (Exception e) {
@@ -42,7 +46,7 @@ public class ListenOrderReplies extends Behaviour {
       }
       else if (perf == ACLMessage.INFORM_IF) { //Hashmap of buy orders
         try {
-          ConcurrentHashMap<String, PriorityBlockingQueue<Order>> buy_orders = (ConcurrentHashMap<String, PriorityBlockingQueue<Order>>)message.getContentObject();
+          ConcurrentHashMap<String, PriorityBlockingQueue<Order> > buy_orders = (ConcurrentHashMap<String, PriorityBlockingQueue<Order> >)message.getContentObject();
           System.out.println("Agent '" + this.agent.getLocalName() + "' buy_orders = " + buy_orders);
         }
         catch (Exception e) {
@@ -51,7 +55,7 @@ public class ListenOrderReplies extends Behaviour {
       }
       else if (perf == ACLMessage.REQUEST) { //Pair of orders
         try {
-          SimpleEntry<ConcurrentHashMap<String, PriorityBlockingQueue<Order>>, ConcurrentHashMap<String, PriorityBlockingQueue<Order>>> orders = (SimpleEntry<ConcurrentHashMap<String, PriorityBlockingQueue<Order>>, ConcurrentHashMap<String, PriorityBlockingQueue<Order>>>)message.getContentObject();
+          SimpleEntry<ConcurrentHashMap<String, PriorityBlockingQueue<Order> >, ConcurrentHashMap<String, PriorityBlockingQueue<Order> > > orders = (SimpleEntry<ConcurrentHashMap<String, PriorityBlockingQueue<Order> >, ConcurrentHashMap<String, PriorityBlockingQueue<Order> > >)message.getContentObject();
           System.out.println("Agent '" + this.agent.getLocalName() + "' orders = " + orders);
         }
         catch (Exception e) {

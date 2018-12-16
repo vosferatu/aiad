@@ -18,58 +18,67 @@ import java.util.concurrent.PriorityBlockingQueue;
 public class WaitForOrder extends Behaviour {
   private StockMarketAgent agent;
   MessageTemplate expected_msgs;
-  private ConcurrentHashMap<String, PriorityBlockingQueue<Order>> buy_orders;
-  private ConcurrentHashMap<String, PriorityBlockingQueue<Order>> sell_orders;
+  int agents_exited = 0;
+  private ConcurrentHashMap<String, PriorityBlockingQueue<Order> > buy_orders;
+  private ConcurrentHashMap<String, PriorityBlockingQueue<Order> > sell_orders;
 
 
-  public WaitForOrder(StockMarketAgent agent, ConcurrentHashMap<String, PriorityBlockingQueue<Order>> buy_orders, ConcurrentHashMap<String, PriorityBlockingQueue<Order>> sell_orders) {
-    this.agent = agent;
-    this.buy_orders = buy_orders;
-    this.sell_orders = sell_orders;
+  public WaitForOrder(StockMarketAgent agent, ConcurrentHashMap<String, PriorityBlockingQueue<Order> > buy_orders, ConcurrentHashMap<String, PriorityBlockingQueue<Order> > sell_orders) {
+    this.agent         = agent;
+    this.buy_orders    = buy_orders;
+    this.sell_orders   = sell_orders;
     this.expected_msgs = MessageTemplate.MatchPerformative(ACLMessage.UNKNOWN);
   }
 
   public void action() {
     ACLMessage message = this.agent.blockingReceive(this.expected_msgs);
+
     if (message != null) {
-      AID sender = message.getSender();
-      StockMessage msg = StockMessage.fromString(message.getContent());
+      AID          sender = message.getSender();
+      StockMessage msg    = StockMessage.fromString(message.getContent());
       if (msg == null) {
         return;
       }
       String msg_type = msg.getType();
-      // System.out.println("MARKET /|\\ Got msg: '" + message.getContent() + "' from '" + sender.getLocalName() + "'");
+      System.out.println("MARKET /|\\ Got msg: '" + message.getContent() + "' from '" + sender.getLocalName() + "'");
 
       if (msg_type.equals(MessageBuilder.SELL)) {
         this.handleSellRequest(sender, msg.getCompany(), msg.getPrice(), msg.getAmount());
-        this.printOrders("BUY", this.buy_orders);
-        this.printOrders("SELL", this.sell_orders);
+        String orders_str = this.printOrders("BUY", this.buy_orders);
+        orders_str += this.printOrders("SELL", this.sell_orders);
+        // System.out.println(orders_str);
       }
       else if (msg_type.equals(MessageBuilder.BUY)) {
         this.handleBuyRequest(sender, msg.getCompany(), msg.getPrice(), msg.getAmount());
-        this.printOrders("BUY", this.buy_orders);
-        this.printOrders("SELL", this.sell_orders);
+        String orders_str = this.printOrders("BUY", this.buy_orders);
+        orders_str += this.printOrders("SELL", this.sell_orders);
+        // System.out.println(orders_str);
       }
       else if (msg_type.equals(MessageBuilder.SELL_ORDERS)) {
-        System.out.println(" Handling sell_orders");
         this.handleSellOrdersRequest(sender);
       }
       else if (msg_type.equals(MessageBuilder.BUY_ORDERS)) {
-        System.out.println(" Handling buy_orders");
         this.handleBuyOrdersRequest(sender);
       }
       else if (msg_type.equals(MessageBuilder.ORDERS)) {
         this.handleOrdersRequest(sender);
       }
       else if (msg_type.equals(MessageBuilder.COMPANIES)) {
-        System.out.println(" Handling companies");
         this.handleCompaniesRequest(sender);
       }
+      else if (msg_type.equals("EXIT")) {
+        this.agents_exited++;
+      }
+    }
+    System.out.println(" Exited ---------> " + this.agents_exited);
+    if (this.agents_exited >= this.agent.getAgentsN()) {
+      this.agent.takeDown();
     }
   }
 
   private void handleSellOrdersRequest(AID sender) {
     ACLMessage reply = new ACLMessage(ACLMessage.INFORM);
+
     try {
       reply.setContentObject(this.sell_orders);
       reply.addReceiver(sender);
@@ -82,6 +91,7 @@ public class WaitForOrder extends Behaviour {
 
   private void handleBuyOrdersRequest(AID sender) {
     ACLMessage reply = new ACLMessage(ACLMessage.INFORM);
+
     try {
       reply.setContentObject(this.buy_orders);
       reply.addReceiver(sender);
@@ -93,8 +103,9 @@ public class WaitForOrder extends Behaviour {
   }
 
   private void handleOrdersRequest(AID sender) {
-    SimpleEntry<ConcurrentHashMap<String, PriorityBlockingQueue<Order>>, ConcurrentHashMap<String, PriorityBlockingQueue<Order>>> orders = new SimpleEntry(this.sell_orders, this.buy_orders);
+    SimpleEntry<ConcurrentHashMap<String, PriorityBlockingQueue<Order> >, ConcurrentHashMap<String, PriorityBlockingQueue<Order> > > orders = new SimpleEntry(this.sell_orders, this.buy_orders);
     ACLMessage reply = new ACLMessage(ACLMessage.REQUEST);
+
     try {
       reply.setContentObject(orders);
       reply.addReceiver(sender);
@@ -107,7 +118,8 @@ public class WaitForOrder extends Behaviour {
 
   private void handleCompaniesRequest(AID sender) {
     HashSet<String> companies = this.getAllCompanies();
-    ACLMessage reply = new ACLMessage(ACLMessage.CONFIRM);
+    ACLMessage      reply     = new ACLMessage(ACLMessage.CONFIRM);
+
     try {
       reply.setContentObject(companies);
       reply.addReceiver(sender);
@@ -123,7 +135,7 @@ public class WaitForOrder extends Behaviour {
 
     if (compatibles == null || compatibles.size() == 0) { // Add order to queue
       SellOrder order = new SellOrder(sender, company, price, amount);
-      this.getOrdersOf(company, this.sell_orders).add(order);
+      this.addOrder(company, this.sell_orders, order);
     }
     else { // Remove order from queue and warn buyer and seller
       int total_sold = 0;
@@ -142,46 +154,48 @@ public class WaitForOrder extends Behaviour {
   // Checks the buy orders to see if the highest is higher than proposed price
   // If an order is compatible it is returned
   private synchronized LinkedList<Order> compatibleBuyOrder(String company, double price, int amount) {
-    PriorityBlockingQueue<Order> orders = this.buy_orders.get(company);
-    LinkedList<Order> compatibles = new LinkedList<Order>();
-    if (orders != null && orders.peek() != null) {
-      Order highest;
+    PriorityBlockingQueue<Order> orders      = this.buy_orders.get(company);
+    LinkedList<Order>            compatibles = new LinkedList<Order>();
+    Order highest;
 
-      while ((highest = orders.peek()).getPrice() >= price && amount > 0) {
+    if (orders != null && (highest = orders.peek()) != null) {
+      while (highest.getPrice() >= price && amount > 0) {
         int order_amount = highest.getAmount();
         if (order_amount > amount) { //Final
           highest.subAmount(amount);
           compatibles.addLast(new BuyOrder(highest.getOwner(), highest.getCompany(), highest.getPrice(), amount));
-          amount-=order_amount;
+          amount -= order_amount;
         }
         else if (order_amount <= amount) {
           try {
             compatibles.addLast(orders.take());
-            amount-=order_amount;
+            amount -= order_amount;
           }
           catch (Exception e) {
             System.err.println("Order does not exist anymore");
           }
         }
       }
+      if (orders.peek() == null) {
+        this.buy_orders.remove(company);
+      }
       return compatibles;
     }
     return null;
   }
-
 
   private void handleBuyRequest(AID sender, String company, double price, int amount) {
     LinkedList<Order> compatibles = this.compatibleSellOrder(company, price, amount);
 
     if (compatibles == null || compatibles.size() == 0) {
       BuyOrder order = new BuyOrder(sender, company, price, amount);
-      this.getOrdersOf(company, this.buy_orders).add(order);
+      this.addOrder(company, this.buy_orders, order);
     }
     else { //Remove order from queue and warn buyer and seller
       int total_bought = 0;
       for (Order order : compatibles) {
         AID owner = order.getOwner();
-        total_bought+=order.getAmount();
+        total_bought += order.getAmount();
         this.warnBothParties(sender, owner, company, order.getPrice(), order.getAmount());
       }
       if (total_bought < amount) { //need to put a buy order with remaining amount
@@ -192,33 +206,37 @@ public class WaitForOrder extends Behaviour {
   }
 
   private synchronized LinkedList<Order> compatibleSellOrder(String company, double price, int amount) {
-    PriorityBlockingQueue<Order> orders = this.sell_orders.get(company);
-    LinkedList<Order> compatibles = new LinkedList<Order>();
-    if (orders != null && orders.peek() != null) {
-      Order lowest;
-      while ((lowest = orders.peek()).getPrice() <= price && amount > 0) {
+    PriorityBlockingQueue<Order> orders      = this.sell_orders.get(company);
+    LinkedList<Order>            compatibles = new LinkedList<Order>();
+    Order lowest;
+
+    if (orders != null && (lowest = orders.peek()) != null) {
+      while (lowest.getPrice() <= price && amount > 0) {
         int order_amount = lowest.getAmount();
         if (order_amount > amount) { //Final
           lowest.subAmount(amount);
           compatibles.addLast(new BuyOrder(lowest.getOwner(), lowest.getCompany(), lowest.getPrice(), amount));
-          amount-=order_amount;
+          amount -= order_amount;
         }
         else if (order_amount <= amount) {
           try {
             compatibles.addLast(orders.take());
-            amount-=order_amount;
+            amount -= order_amount;
           }
           catch (Exception e) {
             System.err.println("Order does not exist anymore");
           }
         }
       }
+      if (orders.peek() == null) {
+        this.buy_orders.remove(company);
+      }
       return compatibles;
     }
     return null;
   }
 
-  private PriorityBlockingQueue<Order> getOrdersOf(String company, ConcurrentHashMap<String, PriorityBlockingQueue<Order>> company_orders) {
+  private PriorityBlockingQueue<Order> getOrdersOf(String company, ConcurrentHashMap<String, PriorityBlockingQueue<Order> > company_orders) {
     PriorityBlockingQueue<Order> orders;
 
     if (!company_orders.containsKey(company)) {
@@ -231,11 +249,28 @@ public class WaitForOrder extends Behaviour {
     return orders;
   }
 
+  private void addOrder(String company, ConcurrentHashMap<String, PriorityBlockingQueue<Order> > company_orders, Order order) {
+    PriorityBlockingQueue<Order> orders = this.getOrdersOf(company, company_orders);
+    boolean exists = false;
+
+    for (Order curr_order : orders) {
+      if (curr_order.equals(order)) {
+        curr_order.addAmount(order.getAmount());
+        exists = true;
+        break;
+      }
+    }
+    if (!exists) {
+      orders.add(order);
+    }
+  }
+
   private void warnBothParties(AID bought_aid, AID sold_aid, String company, double price, int amount) {
-    StockMessage bought = MessageBuilder.boughtStockMsg(company, price, amount);
-    StockMessage sold = MessageBuilder.soldStockMsg(company, price, amount);
-    ACLMessage bought_msg = new ACLMessage(ACLMessage.UNKNOWN);
-    ACLMessage sold_msg = new ACLMessage(ACLMessage.UNKNOWN);
+    StockMessage bought     = MessageBuilder.boughtStockMsg(company, price, amount);
+    StockMessage sold       = MessageBuilder.soldStockMsg(company, price, amount);
+    ACLMessage   bought_msg = new ACLMessage(ACLMessage.UNKNOWN);
+    ACLMessage   sold_msg   = new ACLMessage(ACLMessage.UNKNOWN);
+
     bought_msg.addReceiver(bought_aid);
     bought_msg.setContent(bought.toString());
     sold_msg.addReceiver(sold_aid);
@@ -246,12 +281,13 @@ public class WaitForOrder extends Behaviour {
 
   public HashSet<String> getAllCompanies() {
     HashSet<String> companies = new HashSet<String>();
-    synchronized(this.sell_orders) {
+
+    synchronized (this.sell_orders) {
       for (String company : this.sell_orders.keySet()) {
         companies.add(company);
       }
     }
-    synchronized(this.buy_orders) {
+    synchronized (this.buy_orders) {
       for (String company : this.buy_orders.keySet()) {
         companies.add(company);
       }
@@ -263,14 +299,15 @@ public class WaitForOrder extends Behaviour {
     return false;
   }
 
-  private void printOrders(String start, ConcurrentHashMap<String, PriorityBlockingQueue<Order>> orders) {
+  private String printOrders(String start, ConcurrentHashMap<String, PriorityBlockingQueue<Order> > orders) {
     String final_str = " --- " + start + " ---  \n";
-    for (Map.Entry<String, PriorityBlockingQueue<Order>> entry : orders.entrySet()) {
+
+    for (Map.Entry<String, PriorityBlockingQueue<Order> > entry : orders.entrySet()) {
       final_str += entry.getKey() + "\n";
       for (Order order : entry.getValue()) {
         final_str += "  " + order.toString() + "\n";
       }
     }
-    System.out.println(final_str);
+    return final_str;
   }
 }
