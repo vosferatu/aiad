@@ -42,6 +42,21 @@ The data generated contains a variable number of columns because not every agent
 
 So the first sets of 3 columns represent a single agent, and the last column is always the final stock price.
 
+#### Agents Type
+
+##### 0 ALOOF
+
+Is a somewhat uninformed agent, does some random not always benefitial actions.
+
+##### 1 BOLD
+
+Agent which almost always goes all-in or close to it
+
+##### 2 FRIGHTFUL
+
+Agent which never sells/buys too many stocks, just a tiny bit
+
+
 ## Components
 
 The project is composed of mainly 3 sets of agents.
